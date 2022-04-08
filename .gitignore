@@ -1,3 +1,6 @@
+examples/example_output/
+examples/example_output_vanilla/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
