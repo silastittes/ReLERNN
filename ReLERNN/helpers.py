@@ -5,6 +5,7 @@ Authors: Jared Galloway, Jeff Adrion
 
 from ReLERNN.imports import *
 
+
 #-------------------------------------------------------------------------------------------
 
 def assign_task(mpID, task_q, nProcs):
@@ -308,9 +309,10 @@ def load_and_predictVCF(VCFGenerator,
 
     return None
 
+
 #-------------------------------------------------------------------------------------------
 
-def runModels(ModelFuncPointer,
+def runModels(NetworkDictionary,
             ModelName,
             TrainDir,
             TrainGenerator,
@@ -341,7 +343,7 @@ def runModels(ModelFuncPointer,
         resultsFile = os.path.join("./results/",resultsFilename)
 
     x,y = TrainGenerator.__getitem__(0)
-    model = ModelFuncPointer(x,y)
+    model = NetworkDictionary[ModelName](x,y)
 
     # Early stopping and saving the best weights
     callbacks_list = [
@@ -407,6 +409,8 @@ def runModels(ModelFuncPointer,
     return None
 
 #-------------------------------------------------------------------------------------------
+
+
 
 #def indicesGenerator(batchSize,numReps):
 #    '''

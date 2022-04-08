@@ -94,7 +94,7 @@ def main():
 
 
     ## Train network
-    runModels(ModelFuncPointer=HOTSPOT_CLASSIFY,
+    runModels(NetworkDictionary = NetworkDictionary,
             ModelName="HOTSPOT_CLASSIFY",
             TrainDir=trainDir,
             TrainGenerator=train_sequence,

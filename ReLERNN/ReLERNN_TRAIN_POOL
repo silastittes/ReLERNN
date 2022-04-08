@@ -118,7 +118,7 @@ def main():
 
 
     ## Train network
-    runModels(ModelFuncPointer=GRU_POOLED,
+    runModels(NetworkDictionary = NetworkDictionary,
             ModelName="GRU_POOLED",
             TrainDir=trainDir,
             TrainGenerator=train_sequence,
