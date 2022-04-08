@@ -28,7 +28,7 @@ class Simulator(object):
 
     def __init__(self,
         N = 2,
-	Ne = 1e2,
+	    Ne = 1e2,
         priorLowsRho = 0.0,
         priorLowsMu = 0.0,
         priorHighsRho = 1e-7,

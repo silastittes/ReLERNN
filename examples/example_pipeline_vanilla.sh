@@ -5,7 +5,7 @@ BSCORRECT="ReLERNN_BSCORRECT"
 SEED="42"
 MU="1e-8"
 URTR="1"
-DIR="./example_output/"
+DIR="./example_output_vanilla/"
 VCF="./example.vcf"
 GENOME="./genome.bed"
 MASK="./accessibility_mask.bed"
@@ -17,7 +17,6 @@ ${SIMULATE} \
     --mask ${MASK} \
     --projectDir ${DIR} \
     --assumedMu ${MU} \
-    --maxSites 500 \
     --upperRhoThetaRatio ${URTR} \
     --nTrain 13000 \
     --nVali 2000 \
@@ -26,7 +25,7 @@ ${SIMULATE} \
 
 # Train network
 ${TRAIN} \
-    --networkID TRANSFORMER_PILOT \
+    --networkID GRU_TUNED84 \
     --projectDir ${DIR} \
     --nEpochs 2 \
     --nValSteps 2 \
