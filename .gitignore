@@ -1,5 +1,4 @@
-examples/example_output/
-examples/example_output_vanilla/
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
