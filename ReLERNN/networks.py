@@ -5,6 +5,7 @@ Authors: Jeff Adrion, Andrew Kern, Jared Galloway, Silas Tittes
 from ReLERNN.imports import *
 
 
+
 def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     # Normalization and Attention
     x = layers.LayerNormalization(epsilon=1e-6)(inputs)
@@ -21,21 +22,20 @@ def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     x = layers.Conv1D(filters=inputs.shape[-1], kernel_size=1)(x)
     return x + res
 
-
 def build_model(
-    input_shape,
-    position_shape,
+    genotype_inputs,
+    position_inputs,
     head_size,
     num_heads,
     ff_dim,
     num_transformer_blocks,
     mlp_units,
+    position_units,
     dropout=0,
     mlp_dropout=0,
-):
 
-    inputs = input_shape
-    x = inputs
+):
+    x = genotype_inputs
     for _ in range(num_transformer_blocks):
         x = transformer_encoder(x, head_size, num_heads, ff_dim, dropout)
 
@@ -43,14 +43,42 @@ def build_model(
     for dim in mlp_units:
         x = layers.Dense(dim, activation="relu")(x)
         x = layers.Dropout(mlp_dropout)(x)
+
+    #weights for position data (indexed in case additional layers might be stacked later)
+    x2 = layers.Dense(position_units[0])(position_inputs)
+
+    #combined weights
+    x = layers.concatenate([x, x2])
+    x = layers.Dense(64)(x)
+    x = layers.Dropout(mlp_dropout)(x)
     outputs = layers.Dense(1)(x)
-    return Model([inputs, position_shape], outputs)
+    return Model([genotype_inputs, position_inputs], outputs)
 
 
-def TRANSFORMER_PILOT(x, y):
+
+def TRANSFORMER_PILOT(x, y, **kwargs):
     """
     Verifying updates, but will eventually be transformer model.
     """
+
+
+    ##############################
+    #### PARAMS FOR TUNNING! #####
+    ##############################
+
+    numTransformerBlocks = kwargs.get("numTransformerBlocks", 6)
+    numHeads = kwargs.get("numHeads", 2)
+    headSize = kwargs.get("headSize", 128)
+    ffDim = kwargs.get("ffDim", 4)
+    mlpSize = kwargs.get("mlpSize", 128)
+    positionSize = kwargs.get("positionSize", 256)
+    mlpDropout = kwargs.get("mlpDropout", 0.0)
+    dropout = kwargs.get("dropout", 0.0)
+    LearningRate = kwargs.get("LearningRate", 0.0001)
+
+    ##############################
+    ##############################
+    ##############################
 
     haps, pos = x
 
@@ -59,23 +87,23 @@ def TRANSFORMER_PILOT(x, y):
     numPos = pos[0].shape[0]
 
     genotype_inputs = layers.Input(shape=(numSNPs, numSamps))
-
     position_inputs = layers.Input(shape=(numPos,))
-
+    
     model = build_model(
-        input_shape=genotype_inputs,
-        position_shape=position_inputs,
-        head_size=128,
-        num_heads=4,
-        ff_dim=4,
-        num_transformer_blocks=4,
-        mlp_units=[128],
-        mlp_dropout=0.4,
-        dropout=0.25,
+        genotype_inputs=genotype_inputs,
+        position_inputs=position_inputs,
+        head_size=headSize,
+        num_heads=numHeads,
+        ff_dim=ffDim,
+        num_transformer_blocks=numTransformerBlocks,
+        mlp_units=[mlpSize],
+        position_units=[positionSize],
+        mlp_dropout=mlpDropout,
+        dropout=dropout,
     )
 
     model.compile(
-        optimizer="Adam",
+        optimizer=tf.keras.optimizers.Adam(learning_rate=LearningRate),
         loss="mse",
     )
     model.summary()
@@ -83,7 +111,7 @@ def TRANSFORMER_PILOT(x, y):
     return model
 
 
-def GRU_TUNED84(x, y):
+def GRU_TUNED84(x, y, **kwargs):
     """
     Same as GRU_VANILLA but with dropout AFTER each dense layer.
     """
@@ -122,7 +150,7 @@ def GRU_TUNED84(x, y):
     return model
 
 
-def GRU_POOLED(x, y):
+def GRU_POOLED(x, y, **kwargs):
 
     sites = x.shape[1]
     features = x.shape[2]
@@ -142,7 +170,7 @@ def GRU_POOLED(x, y):
     return model
 
 
-def HOTSPOT_CLASSIFY(x, y):
+def HOTSPOT_CLASSIFY(x, y, **kwargs):
 
     haps, pos = x
 
