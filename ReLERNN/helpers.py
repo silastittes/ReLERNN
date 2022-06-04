@@ -324,7 +324,10 @@ def runModels(NetworkDictionary,
             validationSteps=1,
             network=None,
             nCPU = 1,
-            gpuID = 0):
+            gpuID = 0,
+            patience = 100,
+            min_delta = 0.01,
+            **kwargs):
 
 
     os.environ["CUDA_VISIBLE_DEVICES"]=str(gpuID)
@@ -343,15 +346,15 @@ def runModels(NetworkDictionary,
         resultsFile = os.path.join("./results/",resultsFilename)
 
     x,y = TrainGenerator.__getitem__(0)
-    model = NetworkDictionary[ModelName](x,y)
+    model = NetworkDictionary[ModelName](x,y, **kwargs)
 
     # Early stopping and saving the best weights
     callbacks_list = [
             EarlyStopping(
                 monitor='val_loss',
                 verbose=1,
-                min_delta=0.01,
-                patience=100),
+                min_delta=min_delta,
+                patience=patience),
             ModelCheckpoint(
                 filepath=network[1],
                 monitor='val_loss',
@@ -608,7 +611,7 @@ def mse(x,y):
 
 #-------------------------------------------------------------------------------------------
 
-def plotResults(resultsFile,saveas):
+def plotResults(resultsFile,saveas,summaryfile):
 
     '''
     plotting code for testing a model on simulation.
@@ -635,6 +638,11 @@ def plotResults(resultsFile,saveas):
 
     mae_0 = round(mae(realValues,predictions),4)
     mse_0 = round(mse(realValues,predictions),4)
+
+    with open(summaryfile, "w") as f:
+        print(f"r_2\tmae\tmse", file = f)
+        print(f"{r_2}\t{mae_0}\t{mse_0}", file = f)
+
     labels = "$R^{2} = $"+str(r_2)+"\n"+"$mae = $" + str(mae_0)+" | "+"$mse = $" + str(mse_0)
 
     axes[0].scatter(realValues,predictions,marker = "o", color = 'tab:purple',s=5.0,alpha=0.6)
