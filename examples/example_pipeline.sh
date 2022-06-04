@@ -17,7 +17,6 @@ ${SIMULATE} \
     --mask ${MASK} \
     --projectDir ${DIR} \
     --assumedMu ${MU} \
-    --maxSites 500 \
     --upperRhoThetaRatio ${URTR} \
     --nTrain 13000 \
     --nVali 2000 \
@@ -26,13 +25,10 @@ ${SIMULATE} \
 
 # Train network
 ${TRAIN} \
-    --networkID TRANSFORMER_PILOT \
     --projectDir ${DIR} \
     --nEpochs 2 \
     --nValSteps 2 \
     --seed ${SEED}
-
-#${TRAIN} --networkID poop --projectDir ${DIR} --nEpochs 2 --nValSteps 2 --seed ${SEED}
 
 # Predict
 ${PREDICT} \
