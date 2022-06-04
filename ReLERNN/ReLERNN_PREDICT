@@ -12,6 +12,7 @@ from ReLERNN.sequenceBatchGenerator import *
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v','--vcf',dest='vcf',help='Filtered and QC-checked VCF file. Important: Every row must correspond to a biallelic SNP with no missing data!')
+    parser.add_argument('--simDir',dest='simDir',help='Directory where training simulations are stored.',default=None)
     parser.add_argument('-d','--projectDir',dest='outDir',help='Directory for all project output. NOTE: the same projectDir must be used for all functions of ReLERNN',default=None)
     parser.add_argument('--phased',help='VCF file is phased',default=False, action='store_true')
     parser.add_argument('--unphased',dest='phased',help='VCF file is unphased',action='store_false')
@@ -21,7 +22,10 @@ def main():
     parser.add_argument('-s','--seed',dest='seed',help='Random seed',type=int,default=None)
     args = parser.parse_args()
     
-    
+
+    if args.simDir is None:
+        args.simDir = args.outDir
+
     ## Set seed
     if args.seed:
         os.environ['PYTHONHASHSEED']=str(args.seed)
@@ -35,19 +39,20 @@ def main():
         projectDir = os.getcwd()
     else:
         projectDir = args.outDir
-    trainDir = os.path.join(projectDir,"train")
-    valiDir = os.path.join(projectDir,"vali")
-    testDir = os.path.join(projectDir,"test")
-    networkDir = os.path.join(projectDir,"networks")
-    vcfDir = os.path.join(projectDir,"splitVCFs")
-    modelSave = os.path.join(networkDir,"model.json")
-    weightsSave = os.path.join(networkDir,"weights.h5")
+    trainDir = os.path.join(args.simDir,"train")
+    valiDir = os.path.join(args.simDir,"vali")
+    testDir = os.path.join(args.simDir,"test")
+    networkDir_in = os.path.join(args.simDir,"networks") ###!!!!
+    networkDir_out = os.path.join(projectDir,"networks") ###!!!!
+    vcfDir = os.path.join(args.simDir,"splitVCFs")
+    modelSave = os.path.join(networkDir_out,"model.json")
+    weightsSave = os.path.join(networkDir_out,"weights.h5")
 
 
     ## Read in the window sizes
     maxSimS = 0
     wins=[]
-    winFILE=os.path.join(networkDir,"windowSizes.txt")
+    winFILE=os.path.join(networkDir_in,"windowSizes.txt")
     with open(winFILE, "r") as fIN:
         for line in fIN:
             ar=line.split()

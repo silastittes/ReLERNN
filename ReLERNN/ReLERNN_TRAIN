@@ -9,30 +9,154 @@ from ReLERNN.networks import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-N','--networkID', help='Name of network (GRU_TUNED84, TRA, ETC. NEED TO UPDATE)', default="GRU_TUNED84")
-    parser.add_argument('-d','--projectDir',dest='outDir',help='Directory for all project output. NOTE: the same projectDir must be used for all functions of ReLERNN',default=None)
-    parser.add_argument('--nEpochs',dest='nEpochs',help='Maximum number of epochs to train (EarlyStopping is implemented for validation accuracy)', type=int, default=1000)
-    parser.add_argument('--nValSteps',dest='nValSteps',help='Number of validation steps', type=int, default=20)
-    parser.add_argument('-t','--nCPU',dest='nCPU',help='Number of CPUs to use',type=int,default=1)
-    parser.add_argument('-s','--seed',dest='seed',help='Random seed',type=int,default=None)
-    parser.add_argument('--gpuID',dest='gpuID',help='Identifier specifying which GPU to use', type=int, default=0)
+    parser.add_argument(
+        "-N",
+        "--networkID",
+        help="Name of network (GRU_TUNED84, TRA, ETC. NEED TO UPDATE)",
+        default="GRU_TUNED84",
+    )
+
+    parser.add_argument(
+        '--simDir',
+        dest='simDir',
+        help='Directory where training simulations are stored.', 
+        default=None
+    )
+
+    parser.add_argument(
+        "-d",
+        "--projectDir",
+        dest="outDir",
+        help="Directory for all project output. NOTE: the same projectDir must be used for all functions of ReLERNN",
+        default=None,
+    )
+    parser.add_argument(
+        "--nEpochs",
+        dest="nEpochs",
+        help="Maximum number of epochs to train (EarlyStopping is implemented for validation accuracy)",
+        type=int,
+        default=1000,
+    )
+    parser.add_argument(
+        "--nValSteps",
+        dest="nValSteps",
+        help="Number of validation steps",
+        type=int,
+        default=20,
+    )
+    parser.add_argument(
+        "-t", "--nCPU", dest="nCPU", help="Number of CPUs to use", type=int, default=1
+    )
+
+    parser.add_argument(
+        "-B", "--batchSize", dest="batchSize", help="Size of training batches", type=int, default=64
+    )
+
+    parser.add_argument(
+        "-s", "--seed", dest="seed", help="Random seed", type=int, default=None
+    )
+    parser.add_argument(
+        "--gpuID",
+        dest="gpuID",
+        help="Identifier specifying which GPU to use",
+        type=int,
+        default=0,
+    )
+
+    ################################################
+    ### ADDITIONAL PARAMS FOR TUNING TRANSFORMER ###
+    ################################################
+
+    parser.add_argument(
+        "--numTransformerBlocks",
+        dest="numTransformerBlocks",
+        help="Total number of tranformerblocks to use",
+        type=int,
+        default=1,
+    )
+
+    parser.add_argument(
+        "--headSize",
+        dest="headSize",
+        help="The size of each transformer head",
+        type=int,
+        default=128,
+    )
+
+    parser.add_argument(
+        "--numHeads",
+        dest="numHeads",
+        help="Number of heads to use in each tranformer layer",
+        type=int,
+        default=1,
+    )
+    
+    parser.add_argument(
+        "--ffDim",
+        dest="ffDim",
+        help="Size of 1D conv filters for transformer",
+        type=int,
+        default=4
+    )
+
+    parser.add_argument(
+        "--mlpSize",
+        dest="mlpSize",
+        help="Number of neurons",
+        type=int,
+        default=128
+    )
+
+    parser.add_argument(
+        "--positionSize",
+        dest="positionSize",
+        help="Number of neurons for the snp position layer",
+        type=int,
+        default=256
+    )
+
+    parser.add_argument(
+        "--mlpDropout",
+        dest="mlpDropout",
+        help="Dropout for the mlp component of each transformer block",
+        type=float,
+        default=0.0
+    )
+    
+    parser.add_argument(
+        "--dropout",
+        dest="dropout",
+        help="Dropout within transformer blocks",
+        type=float,
+        default=0.0
+    )
+    parser.add_argument(
+        "--learningRate",
+        dest="learningRate",
+        help="learningRate for optimizer (Adam)",
+        type=float,
+        default=0.0001
+    )
+
     args = parser.parse_args()
-    
-    
+
+    if args.simDir is None:
+        args.simDir = args.outDir
+
     ## Set seed
     if args.seed:
-        os.environ['PYTHONHASHSEED']=str(args.seed)
+        os.environ["PYTHONHASHSEED"] = str(args.seed)
         random.seed(args.seed)
         np.random.seed(args.seed)
-    
-    
+
     ## Set number of cores
     nProc = args.nCPU
-    
-    #verify user input for networkID is one of the existing architectures
-    if args.networkID not in NetworkIDs:
-        raise ValueError(f"{args.networkID} is not one of the avalable networks. Choosing one of these:\n {NetworkIDs}")  
 
+    # verify user input for networkID is one of the existing architectures
+    if args.networkID not in NetworkIDs:
+        raise ValueError(
+            f"{args.networkID} is not one of the avalable networks. Choosing one of these:\n {NetworkIDs}"
+        )
 
     ## Set up the directory structure to store the simulations data.
     if not args.outDir:
@@ -40,96 +164,108 @@ def main():
         projectDir = os.getcwd()
     else:
         projectDir = args.outDir
-    trainDir = os.path.join(projectDir,"train")
-    valiDir = os.path.join(projectDir,"vali")
-    testDir = os.path.join(projectDir,"test")
-    networkDir = os.path.join(projectDir,"networks")
+    trainDir = os.path.join(args.simDir, "train")
+    valiDir = os.path.join(args.simDir, "vali")
+    testDir = os.path.join(args.simDir, "test")
+    networkDir_in = os.path.join(args.simDir, "networks") ###!!!
+    networkDir_out = os.path.join(projectDir, "networks") ###!!!
+
+    ## Make directories if they do not exist
+    for p in [networkDir_out]:
+        if not os.path.exists(p):
+            os.makedirs(p)
 
 
     ## Define output files
-    test_resultFile = os.path.join(networkDir,"testResults.p")
-    test_resultFig = os.path.join(networkDir,"testResults.pdf")
-    modelSave = os.path.join(networkDir,"model.json")
-    weightsSave = os.path.join(networkDir,"weights.h5")
-
+    test_resultFile = os.path.join(networkDir_out, "testResults.p")
+    test_resultFig = os.path.join(networkDir_out, "testResults.pdf")
+    test_resultSummary = os.path.join(networkDir_out, "testSummary.txt")
+    modelSave = os.path.join(networkDir_out, "model.json")
+    weightsSave = os.path.join(networkDir_out, "weights.h5")
 
     ## Identify padding required
     maxSimS = 0
-    winFILE=os.path.join(networkDir,"windowSizes.txt")
+    winFILE = os.path.join(networkDir_in, "windowSizes.txt")
     with open(winFILE, "r") as fIN:
         for line in fIN:
-            maxSimS=max([maxSimS, int(line.split()[5])])
+            maxSimS = max([maxSimS, int(line.split()[5])])
     maxSegSites = 0
-    for ds in [trainDir,valiDir,testDir]:
-        DsInfoDir = pickle.load(open(os.path.join(ds,"info.p"),"rb"))
+    for ds in [trainDir, valiDir, testDir]:
+        DsInfoDir = pickle.load(open(os.path.join(ds, "info.p"), "rb"))
         segSitesInDs = max(DsInfoDir["segSites"])
-        maxSegSites = max(maxSegSites,segSitesInDs)
+        maxSegSites = max(maxSegSites, segSitesInDs)
     maxSegSites = max(maxSegSites, maxSimS)
 
-    
     ## Set network parameters
-       ## Set network parameters
+    ## Set network parameters
     bds_train_params = {
-        'treesDirectory':trainDir,
-        'targetNormalization':"zscore",
-        'batchSize': 64,
-        'maxLen': maxSegSites,
-        'frameWidth': 5,
-        'shuffleInds':True,
-        'sortInds':False,
-        'center':False,
-        'ancVal':-1,
-        'padVal':0,
-        'derVal':1,
-        'realLinePos':True,
-        'posPadVal':0,
-        'seqD':None,
-        'seed':args.seed
-              }
+        "treesDirectory": trainDir,
+        "targetNormalization": "zscore",
+        "batchSize": args.batchSize,
+        "maxLen": maxSegSites,
+        "frameWidth": 5,
+        "shuffleInds": True,
+        "sortInds": False,
+        "center": False,
+        "ancVal": -1,
+        "padVal": 0,
+        "derVal": 1,
+        "realLinePos": True,
+        "posPadVal": 0,
+        "seqD": None,
+        "seed": args.seed,
+    }
 
     ## Dump batch pars for bootstrap
-    batchParsFILE=os.path.join(networkDir,"batchPars.p")
+    batchParsFILE = os.path.join(networkDir_out, "batchPars.p")
     with open(batchParsFILE, "wb") as fOUT:
-        pickle.dump(bds_train_params,fOUT)
-
+        pickle.dump(bds_train_params, fOUT)
 
     bds_vali_params = copy.deepcopy(bds_train_params)
-    bds_vali_params['treesDirectory'] = valiDir
-    bds_vali_params['batchSize'] = 64
+    bds_vali_params["treesDirectory"] = valiDir
+    bds_vali_params["batchSize"] = args.batchSize
 
     bds_test_params = copy.deepcopy(bds_train_params)
-    bds_test_params['treesDirectory'] = testDir
-    DsInfoDir = pickle.load(open(os.path.join(testDir,"info.p"),"rb"))
-    bds_test_params['batchSize'] = DsInfoDir["numReps"]
-    bds_test_params['shuffleExamples'] = False
-
+    bds_test_params["treesDirectory"] = testDir
+    DsInfoDir = pickle.load(open(os.path.join(testDir, "info.p"), "rb"))
+    bds_test_params["batchSize"] = DsInfoDir["numReps"]
+    bds_test_params["shuffleExamples"] = False
 
     ## Define sequence batch generator
     train_sequence = SequenceBatchGenerator(**bds_train_params)
     vali_sequence = SequenceBatchGenerator(**bds_vali_params)
     test_sequence = SequenceBatchGenerator(**bds_test_params)
 
-
     ## Train network
-    runModels(NetworkDictionary = NetworkDictionary,
-            ModelName=args.networkID,
-            TrainDir=trainDir,
-            TrainGenerator=train_sequence,
-            ValidationGenerator=vali_sequence,
-            TestGenerator=test_sequence,
-            resultsFile=test_resultFile,
-            network=[modelSave,weightsSave],
-            numEpochs=args.nEpochs,
-            validationSteps=args.nValSteps,
-            nCPU=nProc,
-            gpuID=args.gpuID)
-
+    runModels(
+        NetworkDictionary=NetworkDictionary,
+        ModelName=args.networkID,
+        TrainDir=trainDir,
+        TrainGenerator=train_sequence,
+        ValidationGenerator=vali_sequence,
+        TestGenerator=test_sequence,
+        resultsFile=test_resultFile,
+        network=[modelSave, weightsSave],
+        numEpochs=args.nEpochs,
+        validationSteps=args.nValSteps,
+        nCPU=nProc,
+        gpuID=args.gpuID,
+        numTransformerBlocks = args.numTransformerBlocks,
+        numHeads = args.numHeads,
+        headSize = args.headSize,
+        ffDim = args.ffDim,
+        mlpSize = args.mlpSize,
+        positionSize = args.positionSize,
+        mlpDropout = args.mlpDropout,
+        dropout = args.dropout,
+        learningRate = args.learningRate
+    )
 
     ## Plot results of predictions on test set
-    plotResults(resultsFile=test_resultFile,saveas=test_resultFig)
-
+    plotResults(resultsFile=test_resultFile, saveas=test_resultFig, summaryfile = test_resultSummary)
 
     print("\n***ReLERNN_TRAIN.py FINISHED!***\n")
 
+
 if __name__ == "__main__":
-	main()
+    main()
